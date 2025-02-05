@@ -8,6 +8,7 @@ const docker = new Docker({ socketPath: process.env.DOCKER_HOST || '/var/run/doc
 
 const PORT = 3000;
 const AUTH_SECRET = process.env.AUTH_SECRET; // Use secret for auth validation
+const DEV_MODE = process.env.DEV_MODE === 'true'; // Flag to check if we are in dev mode
 
 // Store container information
 let containers = {};
@@ -16,8 +17,12 @@ app.use(express.json());
 
 // Middleware to check authorization header
 function checkAuth(req, res, next) {
+  if (DEV_MODE) {
+    // In development mode, bypass the authorization check
+    return next();
+  }
+
   const authHeader = req.header('Authorization');
-  
   if (authHeader && authHeader === `Bearer ${AUTH_SECRET}`) {
     next();
   } else {
