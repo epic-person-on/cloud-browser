@@ -1,9 +1,29 @@
 const express = require('express');
 const Docker = require('dockerode');
 const uuid = require('uuid'); // Used for generating unique API keys
+const sqlite3 = require('sqlite3'); // SQLite database
 const app = express();
 const docker = new Docker();
 const path = require('path');
+
+// SQLite database connection
+const db = new sqlite3.Database('./containers.db', (err) => {
+    if (err) {
+        console.error("Error connecting to database:", err.message);
+    } else {
+        console.log("Connected to SQLite database.");
+    }
+});
+
+// Create a table to store container info (id, start_time)
+db.run(`
+    CREATE TABLE IF NOT EXISTS containers (
+        id TEXT PRIMARY KEY,
+        start_time INTEGER,
+        port1 INTEGER,
+        port2 INTEGER
+    )
+`);
 
 // Sample API key for authorization (you can generate and store these securely)
 const API_KEY = 'your-api-key-here'; // Replace with a securely generated API key
@@ -25,9 +45,6 @@ app.use(validateApiKey); // Apply the API key validation middleware globally
 
 const CHROMIUM_IMAGE = 'linuxserver/chromium:latest';
 
-// In-memory store for container instances (for deletion)
-let containers = {};
-
 // Function to get an available port (simple example, it can be improved)
 const getAvailablePort = () => {
     const port = Math.floor(Math.random() * (65000 - 3000)) + 3000;
@@ -44,7 +61,7 @@ const withTimeout = (promise, timeout) => {
 };
 
 // Function to automatically delete containers after 4 hours (14,400,000 ms)
-const autoDeleteContainer = (containerId) => {
+const autoDeleteContainer = (containerId, startTime) => {
     const deleteTimeout = 14400000; // 4 hours in milliseconds
     setTimeout(async () => {
         try {
@@ -52,7 +69,12 @@ const autoDeleteContainer = (containerId) => {
             const container = docker.getContainer(containerId);
             await container.stop();
             await container.remove();
-            delete containers[containerId];
+            // Delete the record from the database
+            db.run("DELETE FROM containers WHERE id = ?", [containerId], function (err) {
+                if (err) {
+                    console.error("Error deleting from database:", err.message);
+                }
+            });
             console.log(`Container ${containerId} deleted automatically after 4 hours`);
         } catch (error) {
             console.error(`Error deleting container ${containerId} after 4 hours:`, error);
@@ -74,7 +96,7 @@ app.post('/create-container', async (req, res) => {
             'PUID=1000',
             'PGID=1000',
             'TZ=Etc/UTC',
-            'CHROME_CLI=https://google.com', // Optional Chrome CLI arg
+            'CHROME_CLI=chrome://newtab', // Optional Chrome CLI arg
         ];
 
         // Define volume path (Optional: can be passed in request or configured here)
@@ -96,7 +118,7 @@ app.post('/create-container', async (req, res) => {
                     '3000/tcp': [{ HostPort: `${port1}` }], // Map port 3000 in container to a random port on the host
                     '3001/tcp': [{ HostPort: `${port2}` }]  // Map port 3001 in container to another random host port
                 },
-                shm_size: '2gb',  // Shared memory size
+                shm_size: '512m',  // Shared memory size
             },
             security_opt: ['seccomp:unconfined'], // Optional security option
         });
@@ -106,10 +128,18 @@ app.post('/create-container', async (req, res) => {
         console.log(`Container ${container.id} started successfully`);
 
         // Store container data (store container instance, not just the ID)
-        containers[container.id] = container;
+        const startTime = Date.now();
+        db.run("INSERT INTO containers (id, start_time, port1, port2) VALUES (?, ?, ?, ?)", 
+            [container.id, startTime, port1, port2], function(err) {
+                if (err) {
+                    console.error("Error inserting into database:", err.message);
+                } else {
+                    console.log(`Container ${container.id} saved to database`);
+                }
+            });
 
         // Schedule automatic deletion after 4 hours
-        autoDeleteContainer(container.id);
+        autoDeleteContainer(container.id, startTime);
 
         // Immediately return the response with container UUID and assigned ports
         console.log(`Returning response for container creation`);
@@ -131,25 +161,33 @@ app.delete('/delete-container/:uuid', async (req, res) => {
     try {
         console.log(`Received request to delete container ${uuid} from ${req.ip}`);
 
-        // Check if the container exists in the in-memory store (verify by container instance)
-        const container = containers[uuid];
-        
-        if (!container) {
-            console.warn(`Container ${uuid} not found in the store`);
-            return res.status(404).json({ error: 'Container not found' });
-        }
+        // Retrieve the container from the database
+        db.get("SELECT * FROM containers WHERE id = ?", [uuid], async (err, row) => {
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (!row) {
+                return res.status(404).json({ error: 'Container not found' });
+            }
 
-        // Stop and remove the container
-        await container.stop();
-        await container.remove();
-        console.log(`Container ${uuid} stopped and removed`);
+            // Stop and remove the container
+            const container = docker.getContainer(uuid);
+            await container.stop();
+            await container.remove();
 
-        // Remove from the in-memory store
-        delete containers[uuid];
+            // Remove from the database
+            db.run("DELETE FROM containers WHERE id = ?", [uuid], function(err) {
+                if (err) {
+                    console.error("Error deleting from database:", err.message);
+                }
+            });
 
-        res.status(200).json({
-            message: `Container ${uuid} deleted successfully`,
+            console.log(`Container ${uuid} stopped and removed`);
+            res.status(200).json({
+                message: `Container ${uuid} deleted successfully`,
+            });
         });
+
     } catch (error) {
         console.error(`Error deleting container ${uuid}:`, error);
         res.status(500).json({ error: 'Failed to delete container' });
