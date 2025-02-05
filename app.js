@@ -1,10 +1,25 @@
 const express = require('express');
 const Docker = require('dockerode');
+const uuid = require('uuid'); // Used for generating unique API keys
 const app = express();
 const docker = new Docker();
 const path = require('path');
 
+// Sample API key for authorization (you can generate and store these securely)
+const API_KEY = 'your-api-key-here'; // Replace with a securely generated API key
+
 app.use(express.json());
+
+// Middleware for API key validation
+const validateApiKey = (req, res, next) => {
+    const apiKey = req.headers['authorization'];
+    if (apiKey !== `Bearer ${API_KEY}`) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
+    }
+    next(); // Proceed to the next middleware or route handler
+};
+
+app.use(validateApiKey); // Apply the API key validation middleware globally
 
 const CHROMIUM_IMAGE = 'linuxserver/chromium:latest';
 
