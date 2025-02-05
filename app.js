@@ -14,8 +14,10 @@ app.use(express.json());
 const validateApiKey = (req, res, next) => {
     const apiKey = req.headers['authorization'];
     if (apiKey !== `Bearer ${API_KEY}`) {
+        console.warn(`Unauthorized access attempt: Invalid API Key - ${req.ip}`);
         return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
     }
+    console.log(`Authorized request from ${req.ip} to ${req.originalUrl}`);
     next(); // Proceed to the next middleware or route handler
 };
 
@@ -23,12 +25,14 @@ app.use(validateApiKey); // Apply the API key validation middleware globally
 
 const CHROMIUM_IMAGE = 'linuxserver/chromium:latest';
 
-// In-memory store for container information (for deletion)
+// In-memory store for container instances (for deletion)
 let containers = {};
 
 // Function to get an available port (simple example, it can be improved)
 const getAvailablePort = () => {
-    return Math.floor(Math.random() * (65000 - 3000)) + 3000;
+    const port = Math.floor(Math.random() * (65000 - 3000)) + 3000;
+    console.log(`Generated available port: ${port}`);
+    return port;
 };
 
 // Utility function to add timeout to any promise
@@ -44,6 +48,7 @@ const autoDeleteContainer = (containerId) => {
     const deleteTimeout = 14400000; // 4 hours in milliseconds
     setTimeout(async () => {
         try {
+            console.log(`Scheduled deletion for container ${containerId}`);
             const container = docker.getContainer(containerId);
             await container.stop();
             await container.remove();
@@ -58,6 +63,8 @@ const autoDeleteContainer = (containerId) => {
 // Endpoint to create the container
 app.post('/create-container', async (req, res) => {
     try {
+        console.log(`Received request to create container from ${req.ip}`);
+        
         // Dynamically assign ports (3000 and 3001 for this example)
         const port1 = getAvailablePort();
         const port2 = getAvailablePort();
@@ -67,13 +74,14 @@ app.post('/create-container', async (req, res) => {
             'PUID=1000',
             'PGID=1000',
             'TZ=Etc/UTC',
-            'CHROME_CLI=https://www.linuxserver.io/', // Optional Chrome CLI arg
+            'CHROME_CLI=https://google.com', // Optional Chrome CLI arg
         ];
 
         // Define volume path (Optional: can be passed in request or configured here)
         const volumePath = '/path/to/config'; // Change this to your volume path
 
         // Create a container from the image
+        console.log(`Creating container with image: ${CHROMIUM_IMAGE}`);
         const container = await docker.createContainer({
             Image: CHROMIUM_IMAGE,
             name: `chromium-container-${Date.now()}`,
@@ -88,24 +96,26 @@ app.post('/create-container', async (req, res) => {
                     '3000/tcp': [{ HostPort: `${port1}` }], // Map port 3000 in container to a random port on the host
                     '3001/tcp': [{ HostPort: `${port2}` }]  // Map port 3001 in container to another random host port
                 },
-                shm_size: '1gb',  // Shared memory size
+                shm_size: '2gb',  // Shared memory size
             },
             security_opt: ['seccomp:unconfined'], // Optional security option
         });
 
         // Start the container
-        container.start();
+        await container.start();
+        console.log(`Container ${container.id} started successfully`);
 
-        // Store container data to easily reference it for deletion later
-        const containerId = container.id;
+        // Store container data (store container instance, not just the ID)
+        containers[container.id] = container;
 
         // Schedule automatic deletion after 4 hours
-        autoDeleteContainer(containerId);
+        autoDeleteContainer(container.id);
 
         // Immediately return the response with container UUID and assigned ports
+        console.log(`Returning response for container creation`);
         res.status(200).json({
             message: 'Container created successfully',
-            uuid: containerId,
+            uuid: container.id,
             ports: { port1, port2 },
         });
 
@@ -119,16 +129,20 @@ app.post('/create-container', async (req, res) => {
 app.delete('/delete-container/:uuid', async (req, res) => {
     const { uuid } = req.params;
     try {
-        // Check if the container exists in the in-memory store
-        if (!containers[uuid]) {
+        console.log(`Received request to delete container ${uuid} from ${req.ip}`);
+
+        // Check if the container exists in the in-memory store (verify by container instance)
+        const container = containers[uuid];
+        
+        if (!container) {
+            console.warn(`Container ${uuid} not found in the store`);
             return res.status(404).json({ error: 'Container not found' });
         }
-
-        const container = docker.getContainer(uuid);
 
         // Stop and remove the container
         await container.stop();
         await container.remove();
+        console.log(`Container ${uuid} stopped and removed`);
 
         // Remove from the in-memory store
         delete containers[uuid];
