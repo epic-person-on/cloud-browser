@@ -1,12 +1,17 @@
-const express = require('express');
-const Docker = require('dockerode');
-const uuid = require('uuid'); // Used for generating unique API keys
-const sqlite3 = require('sqlite3'); // SQLite database
-const app = express();
-const docker = new Docker();
-const path = require('path');
-const getPort =  require('get-port');
+import express from 'express';
+import Docker from 'dockerode'; // Import the Docker constructor, not 'docker'
+import { v4 as uuidv4 } from 'uuid'; // uuid's ES module import style
+import path from 'path';
+import getPort from 'get-port';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const sqlite3 = require('sqlite3');
 
+// Initialize Dockerode
+const docker = new Docker();  // <-- Correct initialization
+
+// Initialize Express app
+const app = express();  
 
 // SQLite database connection
 const db = new sqlite3.Database('./containers.db', (err) => {
@@ -90,8 +95,8 @@ app.post('/create-container', async (req, res) => {
         console.log(`Received request to create container from ${req.ip}`);
         
         // Dynamically assign ports (3000 and 3001 for this example)
-        const port1 = getAvailablePort();
-        const port2 = getAvailablePort();
+        const port1 = await getAvailablePort();  // Make sure to await the promise to get the port
+        const port2 = await getAvailablePort();  // Same here for port2
 
         // Define environment variables similar to the Compose file
         const environment = [
