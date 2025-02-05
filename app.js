@@ -5,6 +5,8 @@ const sqlite3 = require('sqlite3'); // SQLite database
 const app = express();
 const docker = new Docker();
 const path = require('path');
+const getPort =  require('get-port');
+
 
 // SQLite database connection
 const db = new sqlite3.Database('./containers.db', (err) => {
@@ -47,7 +49,7 @@ const CHROMIUM_IMAGE = 'linuxserver/chromium:latest';
 
 // Function to get an available port (simple example, it can be improved)
 const getAvailablePort = () => {
-    const port = Math.floor(Math.random() * (65000 - 3000)) + 3000;
+    const port = getPort();
     console.log(`Generated available port: ${port}`);
     return port;
 };
