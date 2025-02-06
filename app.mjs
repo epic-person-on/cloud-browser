@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const sqlite3 = require('sqlite3');
 
 // Initialize Dockerode
-const docker = new Docker();  // <-- Correct initialization
+const docker = new Docker({ socketPath: '/var/run/docker.sock' });  // <-- Correct initialization
 
 // Initialize Express app
 const app = express();  
