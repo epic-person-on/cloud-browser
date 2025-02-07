@@ -6,6 +6,7 @@ import getPort from 'get-port';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const sqlite3 = require('sqlite3');
+import cors from 'cors'; // Import CORS package
 
 // Initialize Dockerode
 const docker = new Docker();  // <-- Correct initialization
@@ -36,6 +37,13 @@ db.run(`
 const API_KEY = 'your-api-key-here'; // Replace with a securely generated API key
 
 app.use(express.json());
+
+// Enable CORS for all origins
+app.use(cors({
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'DELETE'], // Allow only GET, POST, DELETE methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow only specific headers
+}));
 
 // Middleware for API key validation
 const validateApiKey = (req, res, next) => {
