@@ -10,7 +10,7 @@ import cors from 'cors'; // Import CORS package
 import sanitizer from 'sanitizer';
 
 // Initialize Dockerode
-const docker = new Docker();  // <-- Correct initialization
+const docker = new Docker();  
 
 // Initialize Express app
 const app = express();  
@@ -62,12 +62,30 @@ app.use(validateApiKey); // Apply the API key validation middleware globally
 
 const CHROMIUM_IMAGE = 'linuxserver/chromium:latest';
 
+docker.pull(CHROMIUM_IMAGE, (err, stream) => {
+    if (err) {
+        console.error('Error pulling image:', err);
+        return;
+    }
+
+    // Attach to the pull stream to monitor progress
+    docker.modem.followProgress(stream, (err, res) => {
+        if (err) {
+            console.error('Error during pull progress:', err);
+        } else {
+            console.log('Image pulled successfully:', res);
+        }
+    });
+});
+
+
+
 // Function to get an available port (simple example, it can be improved)
-const getAvailablePort = () => {
+function getAvailablePort() {
     const port = getPort();
     console.log(`Generated available port: ${port}`);
     return port;
-};
+}
 
 // Utility function to add timeout to any promise
 const withTimeout = (promise, timeout) => {
@@ -104,11 +122,9 @@ app.post('/create-container', async (req, res) => {
     try {
         console.log(`Received request to create container from ${req.ip}`);
         
-        // Dynamically assign ports (3000 and 3001 for this example)
         const port1 = await getAvailablePort();  // Make sure to await the promise to get the port
         const port2 = await getAvailablePort();  // Same here for port2
 
-        // Define environment variables similar to the Compose file
         const environment = [
             'PUID=1000',
             'PGID=1000',
@@ -116,8 +132,7 @@ app.post('/create-container', async (req, res) => {
             'CHROME_CLI=chrome://newtab', // Optional Chrome CLI arg
         ];
 
-        // Define volume path (Optional: can be passed in request or configured here)
-        const volumePath = '/path/to/config'; // Change this to your volume path
+        const volumePath = "/";
 
         // Create a container from the image
         console.log(`Creating container with image: ${CHROMIUM_IMAGE}`);
