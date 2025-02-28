@@ -7,6 +7,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const sqlite3 = require('sqlite3');
 import cors from 'cors'; // Import CORS package
+import sanitizer from 'sanitizer';
 
 // Initialize Dockerode
 const docker = new Docker();  // <-- Correct initialization
@@ -198,14 +199,14 @@ app.delete('/delete-container/:uuid', async (req, res) => {
                 }
             });
 
-            console.log(`Container ${uuid} stopped and removed`);
+            console.log(`Container ${sanitizer.sanitize(uuid)} stopped and removed`);
             res.status(200).json({
-                message: `Container ${uuid} deleted successfully`,
+                message: `Container ${sanitizer.sanitize(uuid)} deleted successfully`,
             });
         });
 
     } catch (error) {
-        console.error(`Error deleting container ${uuid}:`, error);
+        console.error(`Error deleting container ${sanitizer.sanitize(uuid)}:`, error);
         res.status(500).json({ error: 'Failed to delete container' });
     }
 });
