@@ -35,8 +35,8 @@ db.run(`
     )
 `);
 
-// Sample API key for authorization (you can generate and store these securely)
-const API_KEY = 'your-api-key-here'; // Replace with a securely generated API key
+const API_KEY = require('crypto').randomBytes(48).toString('hex'); 
+console.log("API_KEY: " + API_KEY)
 
 app.use(express.json());
 
