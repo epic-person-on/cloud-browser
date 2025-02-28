@@ -13,6 +13,7 @@ const docker = new Docker();  // <-- Correct initialization
 
 // Initialize Express app
 const app = express();  
+app.disable('x-powered-by');
 
 // SQLite database connection
 const db = new sqlite3.Database('./containers.db', (err) => {
