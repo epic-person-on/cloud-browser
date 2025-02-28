@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read  # Required to checkout code
+  packages: write  # Required to push to GitHub Container Registry
+
 
 jobs:
   build:
