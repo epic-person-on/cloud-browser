@@ -1,7 +1,10 @@
-# Use official Node.js 20 image
+# Use official Node.js 20 image with Alpine Linux
 FROM node:20.18.3-alpine3.21
 
-LABEL org.opencontainers.image.description An API cloudbrowser
+LABEL org.opencontainers.image.description "An API cloudbrowser"
+
+# Install Docker
+RUN apk add --no-cache docker
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
