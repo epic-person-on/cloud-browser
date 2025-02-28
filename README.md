@@ -3,6 +3,18 @@
 
 Server side api for a cloud browser which uses Kasm VNC to use chromium in the cloud.
 
+## Running
+you can either run the docker container:
+```bash
+docker run epic-person-on/cloud-browser:latest
+```
+or you can start it from source with:
+```bash
+npm install
+
+node app.mjs
+```
+
 
 ## API Reference
 
@@ -47,4 +59,4 @@ Port 2 is the https port.
 
 #### Authorization
 
-All parts of the api need a bearer authorization token as specified in the app.js
+All parts of the api need a bearer authorization token as specified in the app.mjs
