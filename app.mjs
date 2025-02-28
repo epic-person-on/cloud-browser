@@ -35,7 +35,7 @@ db.run(`
     )
 `);
 
-const API_KEY = require('crypto').randomBytes(48).toString('hex'); 
+const API_KEY = require('crypto').randomBytes(24).toString('hex'); 
 console.log("API_KEY: " + API_KEY)
 
 app.use(express.json());
