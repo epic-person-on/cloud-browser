@@ -48,7 +48,6 @@ if (process.env.API_KEY && process.env.API_KEY.trim() !== '') {
 
 console.log("API_KEY: " + API_KEY);
 
-
 app.use(express.json());
 
 // Enable CORS for all origins
@@ -72,24 +71,6 @@ const validateApiKey = (req, res, next) => {
 app.use(validateApiKey); // Apply the API key validation middleware globally
 
 const CHROMIUM_IMAGE = 'linuxserver/chromium:latest';
-
-docker.pull(CHROMIUM_IMAGE, (err, stream) => {
-    if (err) {
-        console.error('Error pulling image:', err);
-        return;
-    }
-
-    // Attach to the pull stream to monitor progress
-    docker.modem.followProgress(stream, (err, res) => {
-        if (err) {
-            console.error('Error during pull progress:', err);
-        } else {
-            console.log('Image pulled successfully:', res);
-        }
-    });
-});
-
-
 
 // Function to get an available port (simple example, it can be improved)
 function getAvailablePort() {
@@ -128,26 +109,6 @@ const autoDeleteContainer = (containerId, startTime) => {
     }, deleteTimeout);
 };
 
-app.post('/update-api-key/:newkey', async (req, res) => {
-    try {
-        // Log the IP address of the request sender
-        console.log(`Received request to update API key from ${req.ip}`);
-
-        // Get the new API key from the URL parameter
-        const newAPIKey = req.params.newkey;
-
-        // Update the API_KEY
-        API_KEY = newAPIKey;
-
-        // Respond with the updated API key
-        res.status(200).json({ message: 'API key updated successfully', newAPIKey });
-    } catch (error) {
-        console.error('Error updating API key:', error);
-        res.status(500).json({ error: error.message || 'Failed to update' });
-    }
-});
-
-
 // Endpoint to create the container
 app.post('/create-container', async (req, res) => {
     try {
@@ -178,10 +139,11 @@ app.post('/create-container', async (req, res) => {
             HostConfig: {
                 Binds: [`${volumePath}:/config`], // Mount the volume
                 PortBindings: {
-                    '3000/tcp': [{ HostPort: `${port1}` }], // Map port 3000 in container to a random port on the host
-                    '3001/tcp': [{ HostPort: `${port2}` }]  // Map port 3001 in container to another random host port
+                    '3000/tcp': [{ HostPort: `${port1}` }],
+                    '3001/tcp': [{ HostPort: `${port2}` }],
                 },
                 shm_size: '512m',  // Shared memory size
+                Dns: ['127.0.0.1'], // Set DNS to Pi-hole container's local address (localhost)
             },
             security_opt: ['seccomp:unconfined'], // Optional security option
         });
