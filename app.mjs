@@ -35,8 +35,19 @@ db.run(`
     )
 `);
 
-var API_KEY = require('crypto').randomBytes(24).toString('hex'); 
-console.log("API_KEY: " + API_KEY)
+// Check if API_KEY is set in the environment
+let API_KEY;
+
+if (process.env.API_KEY && process.env.API_KEY.trim() !== '') {
+  // Use the existing API_KEY if it's set
+  API_KEY = process.env.API_KEY;
+} else {
+  // Generate a new API_KEY if not set or is empty
+  API_KEY = require('crypto').randomBytes(24).toString('hex');
+}
+
+console.log("API_KEY: " + API_KEY);
+
 
 app.use(express.json());
 
