@@ -6,8 +6,11 @@ Server side api for a cloud browser which uses Kasm VNC to use chromium in the c
 ## Running
 you can either run the docker container:
 ```bash
-docker run epic-person-on/cloud-browser:latest 
+docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-browser:latest 
 ```
+> [!NOTE]  
+> The Docker image uses Docker in Docker which may does pose some security issues.
+
 or you can start it from source with:
 ```bash
 npm install
