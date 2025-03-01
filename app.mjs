@@ -35,7 +35,7 @@ db.run(`
     )
 `);
 
-const API_KEY = require('crypto').randomBytes(24).toString('hex'); 
+var API_KEY = require('crypto').randomBytes(24).toString('hex'); 
 console.log("API_KEY: " + API_KEY)
 
 app.use(express.json());
@@ -115,6 +115,17 @@ const autoDeleteContainer = (containerId, startTime) => {
             console.error(`Error deleting container ${containerId} after 4 hours:`, error);
         }
     }, deleteTimeout);
+};
+
+app.post('/update-api-key/:newkey', async (req, res)) => {
+    try {
+        console.log('Received request to update api key from ${req.ip}');
+
+        API_KEY = newykey;
+    } catch (error) {
+        console.error('Error updating api key:', error);
+        res.status(500).json({ error: error.message || 'Failed to update' });
+    }
 };
 
 // Endpoint to create the container
