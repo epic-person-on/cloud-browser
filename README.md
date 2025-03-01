@@ -11,6 +11,9 @@ docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-bro
 > [!NOTE]  
 > The Docker image uses Docker in Docker which may does pose some security issues.
 
+> [!NOTE]
+> The server you are running cloud browser on should be dedicated to cloud browser.
+
 or you can start it from source with:
 ```bash
 npm install
