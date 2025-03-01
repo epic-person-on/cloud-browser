@@ -1,0 +1,25 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read  # Required to checkout code
+  packages: write  # Required to push to GitHub Container Registry
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+    - run: "node app.mjs"
+    - run: "curl -XPOST -H 'Authorization: Bearer test-token' 'localhost:3000/create-container'"
