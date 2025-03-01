@@ -128,16 +128,25 @@ const autoDeleteContainer = (containerId, startTime) => {
     }, deleteTimeout);
 };
 
-app.post('/update-api-key/:newkey', async (req, res)) => {
+app.post('/update-api-key/:newkey', async (req, res) => {
     try {
-        console.log('Received request to update api key from ${req.ip}');
+        // Log the IP address of the request sender
+        console.log(`Received request to update API key from ${req.ip}`);
 
-        API_KEY = newykey;
+        // Get the new API key from the URL parameter
+        const newAPIKey = req.params.newkey;
+
+        // Update the API_KEY
+        API_KEY = newAPIKey;
+
+        // Respond with the updated API key
+        res.status(200).json({ message: 'API key updated successfully', newAPIKey });
     } catch (error) {
-        console.error('Error updating api key:', error);
+        console.error('Error updating API key:', error);
         res.status(500).json({ error: error.message || 'Failed to update' });
     }
-};
+});
+
 
 // Endpoint to create the container
 app.post('/create-container', async (req, res) => {
