@@ -1,22 +1,19 @@
 import express from 'express';
-import Docker from 'dockerode'; // Import the Docker constructor, not 'docker'
-import { v4 as uuidv4 } from 'uuid'; // uuid's ES module import style
-import path from 'path';
+import Docker from 'dockerode'; 
+import { v4 as uuidv4 } from 'uuid'; 
 import getPort from 'get-port';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const sqlite3 = require('sqlite3');
-import cors from 'cors'; // Import CORS package
+import cors from 'cors'; 
 import sanitizer from 'sanitizer';
 
-// Initialize Dockerode
-const docker = new Docker();  
+const docker = new Docker();
 
-// Initialize Express app
-const app = express();  
+const app = express();
 app.disable('x-powered-by');
 
-// SQLite database connection
+// Database initialization
 const db = new sqlite3.Database('./containers.db', (err) => {
     if (err) {
         console.error("Error connecting to database:", err.message);
@@ -25,7 +22,6 @@ const db = new sqlite3.Database('./containers.db', (err) => {
     }
 });
 
-// Create a table to store container info (id, start_time)
 db.run(`
     CREATE TABLE IF NOT EXISTS containers (
         id TEXT PRIMARY KEY,
@@ -35,51 +31,44 @@ db.run(`
     )
 `);
 
-// Check if API_KEY is set in the environment
 let API_KEY;
 
 if (process.env.API_KEY && process.env.API_KEY.trim() !== '') {
-  // Use the existing API_KEY if it's set
   API_KEY = process.env.API_KEY;
 } else {
-  // Generate a new API_KEY if not set or is empty
   API_KEY = require('crypto').randomBytes(24).toString('hex');
 }
 
 console.log("API_KEY: " + API_KEY);
 
 app.use(express.json());
-
-// Enable CORS for all origins
 app.use(cors({
-  origin: '*', // Allow all origins
-  methods: ['GET', 'POST', 'DELETE'], // Allow only GET, POST, DELETE methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allow only specific headers
+  origin: '*',
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Middleware for API key validation
 const validateApiKey = (req, res, next) => {
     const apiKey = req.headers['authorization'];
+    console.log(`Received API Key: ${apiKey}`);  // Log incoming API Key for debugging
     if (apiKey !== `Bearer ${API_KEY}`) {
         console.warn(`Unauthorized access attempt: Invalid API Key - ${req.ip}`);
         return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
     }
     console.log(`Authorized request from ${req.ip} to ${req.originalUrl}`);
-    next(); // Proceed to the next middleware or route handler
+    next();  // Proceed to the next middleware or route handler
 };
 
-app.use(validateApiKey); // Apply the API key validation middleware globally
+app.use(validateApiKey);  // Apply the API key validation middleware globally
 
 const CHROMIUM_IMAGE = 'linuxserver/chromium:latest';
 
-// Function to get an available port (simple example, it can be improved)
-function getAvailablePort() {
-    const port = getPort();
+async function getAvailablePort() {
+    const port = await getPort();
     console.log(`Generated available port: ${port}`);
     return port;
 }
 
-// Utility function to add timeout to any promise
 const withTimeout = (promise, timeout) => {
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Timeout exceeded')), timeout);
@@ -87,16 +76,14 @@ const withTimeout = (promise, timeout) => {
     return Promise.race([promise, timeoutPromise]);
 };
 
-// Function to automatically delete containers after 4 hours (14,400,000 ms)
-const autoDeleteContainer = (containerId, startTime) => {
-    const deleteTimeout = 14400000; // 4 hours in milliseconds
+const autoDeleteContainer = (containerId) => {
+    const deleteTimeout = 14400000;
     setTimeout(async () => {
         try {
             console.log(`Scheduled deletion for container ${containerId}`);
             const container = docker.getContainer(containerId);
             await container.stop();
             await container.remove();
-            // Delete the record from the database
             db.run("DELETE FROM containers WHERE id = ?", [containerId], function (err) {
                 if (err) {
                     console.error("Error deleting from database:", err.message);
@@ -109,50 +96,47 @@ const autoDeleteContainer = (containerId, startTime) => {
     }, deleteTimeout);
 };
 
-// Endpoint to create the container
 app.post('/create-container', async (req, res) => {
     try {
         console.log(`Received request to create container from ${req.ip}`);
         
-        const port1 = await getAvailablePort();  // Make sure to await the promise to get the port
-        const port2 = await getAvailablePort();  // Same here for port2
+        const port1 = await getAvailablePort();
+        const port2 = await getAvailablePort();
 
         const environment = [
             'PUID=1000',
             'PGID=1000',
             'TZ=Etc/UTC',
-            'CHROME_CLI=chrome://newtab', // Optional Chrome CLI arg
+            'CHROME_CLI=chrome://newtab',
         ];
 
         const volumePath = "/";
+        const Dns = '94.140.14.14';
 
-        // Create a container from the image
         console.log(`Creating container with image: ${CHROMIUM_IMAGE}`);
         const container = await docker.createContainer({
             Image: CHROMIUM_IMAGE,
             name: `chromium-container-${Date.now()}`,
-            Tty: true,  // Keep the terminal open for the container
-            Env: environment,  // Pass environment variables
+            Tty: true,
+            Env: environment,
             Volumes: {
-                '/config': {}  // Bind mount the config volume
+                '/config': {}
             },
             HostConfig: {
-                Binds: [`${volumePath}:/config`], // Mount the volume
+                Binds: [`${volumePath}:/config`],
                 PortBindings: {
                     '3000/tcp': [{ HostPort: `${port1}` }],
-                    '3001/tcp': [{ HostPort: `${port2}` }],
+                    '3001/tcp': [{ HostPort: `${port2}` }]
                 },
-                shm_size: '512m',  // Shared memory size
-                Dns: ['127.0.0.1'], // Set DNS to Pi-hole container's local address (localhost)
+                shm_size: '512m',
+                Dns: [Dns],
             },
-            security_opt: ['seccomp:unconfined'], // Optional security option
+            security_opt: ['seccomp:unconfined'],
         });
 
-        // Start the container
         await container.start();
         console.log(`Container ${container.id} started successfully`);
 
-        // Store container data (store container instance, not just the ID)
         const startTime = Date.now();
         db.run("INSERT INTO containers (id, start_time, port1, port2) VALUES (?, ?, ?, ?)", 
             [container.id, startTime, port1, port2], function(err) {
@@ -163,11 +147,8 @@ app.post('/create-container', async (req, res) => {
                 }
             });
 
-        // Schedule automatic deletion after 4 hours
-        autoDeleteContainer(container.id, startTime);
+        autoDeleteContainer(container.id);
 
-        // Immediately return the response with container UUID and assigned ports
-        console.log(`Returning response for container creation`);
         res.status(200).json({
             message: 'Container created successfully',
             uuid: container.id,
@@ -180,27 +161,25 @@ app.post('/create-container', async (req, res) => {
     }
 });
 
-// Endpoint to delete the container manually
+// Endpoint to manually delete a container
 app.delete('/delete-container/:uuid', async (req, res) => {
     const { uuid } = req.params;
     try {
         console.log(`Received request to delete container ${uuid} from ${req.ip}`);
 
-        // Retrieve the container from the database
         db.get("SELECT * FROM containers WHERE id = ?", [uuid], async (err, row) => {
             if (err) {
+                console.error("Database error:", err);
                 return res.status(500).json({ error: 'Database error' });
             }
             if (!row) {
                 return res.status(404).json({ error: 'Container not found' });
             }
 
-            // Stop and remove the container
             const container = docker.getContainer(uuid);
             await container.stop();
             await container.remove();
 
-            // Remove from the database
             db.run("DELETE FROM containers WHERE id = ?", [uuid], function(err) {
                 if (err) {
                     console.error("Error deleting from database:", err.message);
@@ -219,8 +198,17 @@ app.delete('/delete-container/:uuid', async (req, res) => {
     }
 });
 
-// Start the Express server
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// Global error handling for uncaught errors or unhandled rejections
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    process.exit(1);  // Exit the process after logging the error
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err);
+    process.exit(1);  // Exit the process after logging the error
+});
+
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
 });
