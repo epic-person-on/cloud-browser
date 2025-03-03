@@ -66,3 +66,5 @@ Port 2 is the https port.
 #### Authorization
 
 All parts of the api need a bearer authorization token as specified in the app.mjs
+Example curl request:
+curl -XPOST -H 'Authorization: Bearer your-token' 'https://server.com/create-container'
