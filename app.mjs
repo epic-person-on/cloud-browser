@@ -166,7 +166,7 @@ app.post('/create-container', async (req, res) => {
 app.delete('/delete-container/:uuid', async (req, res) => {
     const { uuid } = req.params;
     try {
-        console.log(`Received request to delete container ${uuid} from ${req.ip}`);
+        console.log(`Received request to delete container ${sanitizer.sanitize(uuid)} from ${req.ip}`);
 
         db.get("SELECT * FROM containers WHERE id = ?", [uuid], async (err, row) => {
             if (err) {
