@@ -10,7 +10,7 @@ you can start it from source with:
 ```bash
 npm install
 
-node app.mjs
+npm run start
 ```
 
 you can either run the docker container:
