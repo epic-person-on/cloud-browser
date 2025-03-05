@@ -1,9 +1,18 @@
 
-# Cloud Browser (server)
 
-Server side api for a cloud browser which uses Kasm VNC to use chromium in the cloud.
+# Cloud Browser 
+
+Server side api + ui for a cloud browser which uses Kasm VNC to use chromium in the cloud.
 
 ## Running
+
+you can start it from source with:
+```bash
+npm install
+
+node app.mjs
+```
+
 you can either run the docker container:
 ```bash
 docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-browser:latest 
@@ -13,14 +22,6 @@ docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-bro
 
 > [!NOTE]
 > The server you are running cloud browser on should be dedicated to cloud browser.
-
-or you can start it from source with:
-```bash
-npm install
-
-node app.mjs
-```
-
 
 ## API Reference
 
