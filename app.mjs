@@ -39,6 +39,7 @@ if (process.env.API_KEY && process.env.API_KEY.trim() !== '') {
   API_KEY = require('crypto').randomBytes(24).toString('hex');
 }
 
+process.env['API_KEY'] = API_KEY; 
 console.log("API_KEY: " + API_KEY);
 
 app.use(express.json());
