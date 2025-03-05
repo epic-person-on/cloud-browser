@@ -27,13 +27,13 @@ docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-bro
 
 #### Create Container
 
+512mb of ram
 ```http
-  # 512mb of ram
   POST /create-container
 ```
 or
+same as other but with 2gb of ram
 ```http
-  # same as other but with 2gb of ram
   POST /create-container-pro
 ```
 ##### Example response
