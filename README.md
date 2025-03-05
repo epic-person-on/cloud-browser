@@ -28,7 +28,13 @@ docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-bro
 #### Create Container
 
 ```http
+  # 512mb of ram
   POST /create-container
+```
+or
+```http
+  # same as other but with 2gb of ram
+  POST /create-container-pro
 ```
 ##### Example response
 
@@ -45,6 +51,7 @@ docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-bro
 
 Port 1 is the http port. 
 Port 2 is the https port.
+
 
 #### Delete container
 
