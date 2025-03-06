@@ -13,10 +13,6 @@ npm install
 node app.mjs
 ```
 
-you can either run the docker container:
-```bash
-docker run -v /var/run/docker.sock:/var/run/docker.sock epic-person-on/cloud-browser:latest 
-```
 > [!NOTE]  
 > The Docker image uses Docker in Docker which may does pose some security issues.
 
